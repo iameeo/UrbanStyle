@@ -1,0 +1,79 @@
+## 기본적인 Visual Studio 관련 무시 파일 ##
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.csproj.user
+*.pidb
+*.svclog
+*.pdb
+
+## 빌드 출력물 ##
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+*.log
+
+## 패키지 디렉토리 ##
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## 환경 파일 ##
+*.env
+
+## 리샤퍼 관련 ##
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+## 기타 캐시 파일 ##
+*.dbmdl
+*.bak
+*.cache
+*.tmp
+
+## 배포 관련 ##
+publish/
+TestResults/
+*.vsmdi
+*.testsettings
+*.vsp
+*.vspx
+*.sap
+
+## 인증서 및 키 ##
+*.pfx
+*.key
+*.cer
+
+## 이미지 및 리소스 자동 생성 ##
+*.resources
+
+## NuGet 관련 ##
+.nuget/
+*.nupkg
+*.nuspec
+*.psmdcp
+
+## Windows 관련 ##
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+## IIS Express ##
+.iisexpress/
+*.config
+
+## Rider 관련 ##
+.idea/
+
+## 기타 개인 설정 ##
+*.local
