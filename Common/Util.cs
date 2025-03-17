@@ -29,20 +29,28 @@ namespace urban_style_auto_regist.Common
                 return;
             }
 
-            target.Navigate().GoToUrl(sourceUrl); // 같은 URL로 맞추기
-
-            foreach (var cookie in source.Manage().Cookies.AllCookies)
+            try
             {
-                try
+                target.Navigate().GoToUrl(sourceUrl); // 같은 URL로 맞추기
+
+                foreach (var cookie in source.Manage().Cookies.AllCookies)
                 {
-                    target.Manage().Cookies.AddCookie(cookie);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"쿠키 복사 오류: {ex.Message}");
+                    try
+                    {
+                        target.Manage().Cookies.AddCookie(cookie);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"쿠키 복사 오류: {ex.Message}");
+                    }
                 }
             }
+            catch (WebDriverException ex)
+            {
+                Debug.WriteLine($"웹드라이버 오류 발생: {ex.Message}");
+            }
         }
+
 
         /// <summary>
         /// 이미지를 다운로드하여 지정된 디렉터리에 저장합니다.
