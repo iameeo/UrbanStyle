@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34616.47
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "urban-style-auto-regist", "urban-style-auto-regist.csproj", "{FB625D8B-492D-4EED-BA74-CFCAE45E10AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UrbanStyle", "UrbanStyle.csproj", "{FB625D8B-492D-4EED-BA74-CFCAE45E10AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

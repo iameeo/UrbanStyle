@@ -6,7 +6,7 @@
         ///  Required designer variable.
         /// </summary>
         private System.ComponentModel.IContainer components = null;
-        const string AppName = "Urban-Style-Auto-Regist";
+        const string AppName = "UrbanStyle";
 
         /// <summary>
         ///  Clean up any resources being used.
