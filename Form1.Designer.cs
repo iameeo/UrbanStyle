@@ -31,6 +31,7 @@
         {
             ShopList = new ComboBox();
             BtnStart = new Button();
+            BtnAll = new Button();
             SuspendLayout();
             // 
             // ShopList
@@ -52,11 +53,22 @@
             BtnStart.UseVisualStyleBackColor = true;
             BtnStart.Click += BtnStart_Click;
             // 
+            // BtnAll
+            // 
+            BtnAll.Location = new Point(372, 261);
+            BtnAll.Name = "BtnAll";
+            BtnAll.Size = new Size(75, 23);
+            BtnAll.TabIndex = 2;
+            BtnAll.Text = "ALL START";
+            BtnAll.UseVisualStyleBackColor = true;
+            BtnAll.Click += BtnAll_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(BtnAll);
             Controls.Add(BtnStart);
             Controls.Add(ShopList);
             Name = "Form1";
@@ -68,5 +80,6 @@
 
         private ComboBox ShopList;
         private Button BtnStart;
+        private Button BtnAll;
     }
 }
