@@ -134,11 +134,11 @@ namespace urban_style_auto_regist
 
                 int seq = combineProduct.Seq;
 
-                Util.ImgDownload(shopName, "title", ProductThumbImg, seq + ".jpg");
+                Task<bool> titleImgDown = Util.ImgDownloadAsync(shopName, "title", ProductThumbImg, seq + ".jpg");
 
                 for(var i=0; i<imgs.Count; i++)
                 {
-                    Util.ImgDownload(shopName, "desc", imgs[i], seq + "_" + i + ".jpg");
+                    Task<bool> descImgDown = Util.ImgDownloadAsync(shopName, "desc", imgs[i], seq + "_" + i + ".jpg");
 
                     CombineProductImg combineProductImg = new()
                     {
