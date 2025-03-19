@@ -27,7 +27,7 @@ namespace urban_style_auto_regist
             if (ShopList.Items.Count > 0) ShopList.SelectedIndex = 0;
         }
 
-        private void BtnStart_Click(object sender, EventArgs e)
+        private async void BtnStart_Click(object sender, EventArgs e)
         {
             var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == ShopList.Text);
             if (shopInfo == null)
@@ -36,26 +36,7 @@ namespace urban_style_auto_regist
                 return;
             }
 
-            if (shopInfo.ShopName.Equals("ddmshu", StringComparison.OrdinalIgnoreCase))
-            {
-                Task task = DdmshuLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-            }
-            else if (shopInfo.ShopName.Equals("girlsgoob", StringComparison.OrdinalIgnoreCase))
-            {
-                Task task = GirlsgoobLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-            }
-            else if (shopInfo.ShopName.Equals("shubasic", StringComparison.OrdinalIgnoreCase))
-            {
-                Task task = ShubasicLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-            }
-            else if (shopInfo.ShopName.Equals("shuline", StringComparison.OrdinalIgnoreCase))
-            {
-                Task task = ShulineLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-            }
-            else
-            {
-                MessageBox.Show("Unknown shop.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            await ShopProcess(shopInfo);
         }
 
         private async Task ShulineLoginAsync(string url, string id, string pw, string shopName)
@@ -575,6 +556,10 @@ namespace urban_style_auto_regist
                 Util.CopyCookies(loginDriver, parseDriver);
 
                 loginDriver.Navigate().GoToUrl(url);
+                loginWait.Until(ExpectedConditions.ElementToBeClickable(By.CssSelector("#contents > section:nth-child(4) > div > div.xans-element-.xans-product.xans-product-listmore-1.xans-product-listmore.xans-product-1.more > a"))).Click();
+                loginDriver.Navigate().GoToUrl(url);
+                loginWait.Until(ExpectedConditions.ElementToBeClickable(By.CssSelector("#contents > section:nth-child(4) > div > div.xans-element-.xans-product.xans-product-listmore-1.xans-product-listmore.xans-product-1.more > a"))).Click();
+
                 var productLists = loginWait.Until(ExpectedConditions.VisibilityOfAllElementsLocatedBy(By.XPath("//*[@id='contents']/section[2]/div/div[1]/ul/li")));
 
                 foreach (var product in productLists)
@@ -672,13 +657,50 @@ namespace urban_style_auto_regist
             }
         }
 
-        private void BtnAll_Click(object sender, EventArgs e)
+        private async void BtnAll_Click(object sender, EventArgs e)
         {
             foreach (var item in ShopList.Items)
             {
-                // ComboBox 항목을 선택
-                ShopList.SelectedItem = item;
-                BtnStart_Click(sender, e);
+                string shopName = item.ToString();
+
+                var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == shopName);
+                if (shopInfo == null)
+                {
+                    MessageBox.Show($"Shop information for '{shopName}' not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
+                }
+
+                await ShopProcess(shopInfo);
+
+            }
+        }
+
+        private async Task ShopProcess(CombineShop shopInfo)
+        {
+            try
+            {
+                switch (shopInfo.ShopName.ToLower())
+                {
+                    case "ddmshu":
+                        await DdmshuLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
+                        break;
+                    case "girlsgoob":
+                        await GirlsgoobLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
+                        break;
+                    case "shubasic":
+                        await ShubasicLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
+                        break;
+                    case "shuline":
+                        await ShulineLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
+                        break;
+                    default:
+                        MessageBox.Show($"Unknown shop: {shopInfo.ShopName}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error logging into {shopInfo.ShopName}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

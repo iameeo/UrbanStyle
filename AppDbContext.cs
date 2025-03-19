@@ -14,7 +14,7 @@ namespace urban_style_auto_regist
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            const string connectionString = "server=222.238.0.64;database=iameeo_db;user=iameeo;password=wndnjsWkd!2;";
+            const string connectionString = "server=localhost;database=iameeo_db;user=iameeo;password=wndnjsWkd!2;";
             optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
         }
 
