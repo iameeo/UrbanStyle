@@ -29,7 +29,14 @@ namespace urban_style_auto_regist
 
         private async void BtnStart_Click(object sender, EventArgs e)
         {
-            var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == ShopList.Text);
+            string selectedShop = ShopList.Text;
+            if (string.IsNullOrWhiteSpace(selectedShop))
+            {
+                MessageBox.Show("Please select a shop.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == selectedShop);
             if (shopInfo == null)
             {
                 MessageBox.Show("Shop information not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -659,43 +666,44 @@ namespace urban_style_auto_regist
 
         private async void BtnAll_Click(object sender, EventArgs e)
         {
+            var tasks = new List<Task>();
+
             foreach (var item in ShopList.Items)
             {
                 string shopName = item.ToString();
-
                 var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == shopName);
+
                 if (shopInfo == null)
                 {
                     MessageBox.Show($"Shop information for '{shopName}' not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     continue;
                 }
 
-                await ShopProcess(shopInfo);
-
+                tasks.Add(ShopProcess(shopInfo));
             }
+
+            await Task.WhenAll(tasks);
         }
 
         private async Task ShopProcess(CombineShop shopInfo)
         {
             try
             {
-                switch (shopInfo.ShopName.ToLower())
+                var shopLoginMethods = new Dictionary<string, Func<string, string, string, string, Task>>
                 {
-                    case "ddmshu":
-                        await DdmshuLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-                        break;
-                    case "girlsgoob":
-                        await GirlsgoobLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-                        break;
-                    case "shubasic":
-                        await ShubasicLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-                        break;
-                    case "shuline":
-                        await ShulineLoginAsync(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
-                        break;
-                    default:
-                        MessageBox.Show($"Unknown shop: {shopInfo.ShopName}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        break;
+                    { "ddmshu", DdmshuLoginAsync },
+                    { "girlsgoob", GirlsgoobLoginAsync },
+                    { "shubasic", ShubasicLoginAsync },
+                    { "shuline", ShulineLoginAsync }
+                };
+
+                if (shopLoginMethods.TryGetValue(shopInfo.ShopName.ToLower(), out var loginMethod))
+                {
+                    await loginMethod(shopInfo.ShopUrl, shopInfo.ShopId, shopInfo.ShopPw, shopInfo.ShopName);
+                }
+                else
+                {
+                    MessageBox.Show($"Unknown shop: {shopInfo.ShopName}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (Exception ex)
