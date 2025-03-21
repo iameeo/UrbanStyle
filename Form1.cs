@@ -51,6 +51,7 @@ namespace urban_style_auto_regist
         {
             var options = new ChromeOptions();
             options.AddArgument("--start-maximized");
+            options.AddArgument("--headless"); // 브라우저 창 숨기기
 
             using var loginDriver = new ChromeDriver(options);
             using var parseDriver = new ChromeDriver(options);
@@ -216,6 +217,7 @@ namespace urban_style_auto_regist
         {
             var options = new ChromeOptions();
             options.AddArgument("--start-maximized");
+            options.AddArgument("--headless"); // 브라우저 창 숨기기
 
             using var loginDriver = new ChromeDriver(options);
             using var parseDriver = new ChromeDriver(options);
@@ -387,6 +389,7 @@ namespace urban_style_auto_regist
         {
             var options = new ChromeOptions();
             options.AddArgument("--start-maximized");
+            options.AddArgument("--headless"); // 브라우저 창 숨기기
 
             using var loginDriver = new ChromeDriver(options);
             using var parseDriver = new ChromeDriver(options);
@@ -559,6 +562,7 @@ namespace urban_style_auto_regist
         {
             var options = new ChromeOptions();
             options.AddArgument("--start-maximized");
+            options.AddArgument("--headless"); // 브라우저 창 숨기기
 
             using var loginDriver = new ChromeDriver(options);
             using var parseDriver = new ChromeDriver(options);
