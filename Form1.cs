@@ -695,24 +695,20 @@ namespace urban_style_auto_regist
 
         private async void BtnAll_Click(object sender, EventArgs e)
         {
-                var tasks = new List<Task>();
+            foreach (var item in ShopList.Items)
+            {
+                string shopName = item.ToString();
+                var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == shopName);
 
-                foreach (var item in ShopList.Items)
+                if (shopInfo == null)
                 {
-                    string shopName = item.ToString();
-                    var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == shopName);
-
-                    if (shopInfo == null)
-                    {
-                        MessageBox.Show($"Shop information for '{shopName}' not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        continue;
-                    }
-
-                    tasks.Add(ShopProcess(shopInfo));
+                    MessageBox.Show($"Shop information for '{shopName}' not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    continue;
                 }
 
-                await Task.WhenAll(tasks);
+                await ShopProcess(shopInfo); // 순차적으로 실행
             }
+        }
 
         private async Task ShopProcess(CombineShop shopInfo)
         {
