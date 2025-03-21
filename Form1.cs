@@ -650,7 +650,9 @@ namespace urban_style_auto_regist
                                         .ToList();
 
                     var imgs = element.FindElements(By.XPath(".//div[@class=\"productDetail\"]//img"))
-                                      .Select(img => img.GetAttribute("ec-data-src"))
+                                      .Select(img => img.GetAttribute("ec-data-src") ?? img.GetAttribute("src")) // 우선순위로 ec-data-src, 없으면 src
+                                      .Where(src => !string.IsNullOrEmpty(src)) // null 또는 빈 값을 제거
+                                      .Distinct() // 중복 제거
                                       .ToList();
 
                     var combineProduct = new CombineProduct
