@@ -8,16 +8,20 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using urban_style_auto_regist.Common;
 using urban_style_auto_regist.Model;
+using Timer = System.Windows.Forms.Timer;
 
 namespace urban_style_auto_regist
 {
     public partial class Form1 : Form
     {
         private readonly AppDbContext _context;
+        private Timer timer;
 
         public Form1(AppDbContext context)
         {
             InitializeComponent();
+            InitializeTimer();
+
             _context = context;
         }
 
@@ -26,6 +30,20 @@ namespace urban_style_auto_regist
             var shops = _context.CombineShops.Where(x => x.ShopOpen == "Y").ToList();
             ShopList.Items.AddRange(shops.Select(shop => shop.ShopName).ToArray());
             if (ShopList.Items.Count > 0) ShopList.SelectedIndex = 0;
+        }
+
+        private void InitializeTimer()
+        {
+            timer = new Timer();
+            timer.Interval = 30 * 60 * 1000; // 30분 (밀리초 단위)
+            timer.Tick += Timer_Tick;
+            timer.Start();
+        }
+
+        private void Timer_Tick(object sender, EventArgs e)
+        {
+            // 버튼 클릭 이벤트 트리거
+            BtnAll.PerformClick();
         }
 
         private async void BtnStart_Click(object sender, EventArgs e)
