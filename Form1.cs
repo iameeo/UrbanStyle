@@ -330,7 +330,9 @@ namespace urban_style_auto_regist
                     }
 
                     var imgs = element.FindElements(By.XPath("//*[@id=\"prdDetail\"]//img"))
-                                      .Select(img => img.GetAttribute("ec-data-src"))
+                                      .Select(img => img.GetAttribute("ec-data-src") ?? img.GetAttribute("src")) // 우선순위로 ec-data-src, 없으면 src
+                                      .Where(src => !string.IsNullOrEmpty(src)) // null 또는 빈 값을 제거
+                                      .Distinct() // 중복 제거
                                       .ToList();
 
                     var combineProduct = new CombineProduct
@@ -359,7 +361,7 @@ namespace urban_style_auto_regist
 
                     for (int i = 0; i < imgs.Count; i++)
                     {
-                        string imgUrl = "https:"+ imgs[i];
+                        string imgUrl = !imgs[i].Contains("http") ? "https:" + imgs[i] : imgs[i];
 
                         imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
 
