@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
@@ -36,7 +37,7 @@ namespace urban_style_auto_regist
                 return;
             }
 
-            var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == selectedShop);
+            var shopInfo = await _context.CombineShops.FirstOrDefaultAsync(x => x.ShopName == selectedShop);
             if (shopInfo == null)
             {
                 MessageBox.Show("Shop information not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -402,7 +403,7 @@ namespace urban_style_auto_regist
 
                 foreach (var product in productLists)
                 {
-                    string productUrl = product.FindElement(By.TagName("a")).GetAttribute("href") + "#df-prd-tab-detail";
+                    string productUrl = product.FindElement(By.TagName("a")).GetAttribute("href");
                     parseDriver.Navigate().GoToUrl(productUrl);
                     var parseWait = new WebDriverWait(parseDriver, TimeSpan.FromSeconds(10));
 
@@ -571,7 +572,7 @@ namespace urban_style_auto_regist
 
                 foreach (var product in productLists)
                 {
-                    string productUrl = product.FindElement(By.TagName("a")).GetAttribute("href") + "#detail";
+                    string productUrl = product.FindElement(By.TagName("a")).GetAttribute("href");
                     parseDriver.Navigate().GoToUrl(productUrl);
                     var parseWait = new WebDriverWait(parseDriver, TimeSpan.FromSeconds(10));
 
@@ -610,8 +611,8 @@ namespace urban_style_auto_regist
                                         .Select(li => li.Text)
                                         .ToList();
 
-                    var imgs = element.FindElements(By.XPath(".//div[@class=\"productDetail\"]/div/img"))
-                                      .Select(img => img.GetAttribute("src"))
+                    var imgs = element.FindElements(By.XPath(".//div[@class=\"productDetail\"]//img"))
+                                      .Select(img => img.GetAttribute("ec-data-src"))
                                       .ToList();
 
                     var combineProduct = new CombineProduct
@@ -640,7 +641,9 @@ namespace urban_style_auto_regist
 
                     for (int i = 0; i < imgs.Count; i++)
                     {
-                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgs[i], $"{seq}_{i}.jpg"));
+                        string imgUrl = GetDomainWithProtocol(parseWait, imgs[i]);
+
+                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
 
                         _context.CombineProductImgs.Add(new CombineProductImg
                         {
@@ -648,7 +651,7 @@ namespace urban_style_auto_regist
                             ProductShop = shopName,
                             ProductSeq = seq,
                             ProductImgSort = i,
-                            ProductImgUrl = imgs[i],
+                            ProductImgUrl = imgUrl,
                         });
                     }
 
@@ -664,26 +667,38 @@ namespace urban_style_auto_regist
             }
         }
 
+        private string GetDomainWithProtocol(WebDriverWait parseWait, string v)
+        {
+            // 현재 URL 가져오기
+            string currentUrl = parseWait.Until(driver => driver).Url;
+
+            // 프로토콜 + 도메인 추출
+            Uri uri = new Uri(currentUrl);
+            string domainWithProtocol = uri.Scheme + "://" + uri.Host + v;
+
+            return domainWithProtocol;
+        }
+
         private async void BtnAll_Click(object sender, EventArgs e)
         {
-            var tasks = new List<Task>();
+                var tasks = new List<Task>();
 
-            foreach (var item in ShopList.Items)
-            {
-                string shopName = item.ToString();
-                var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == shopName);
-
-                if (shopInfo == null)
+                foreach (var item in ShopList.Items)
                 {
-                    MessageBox.Show($"Shop information for '{shopName}' not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    continue;
+                    string shopName = item.ToString();
+                    var shopInfo = _context.CombineShops.FirstOrDefault(x => x.ShopName == shopName);
+
+                    if (shopInfo == null)
+                    {
+                        MessageBox.Show($"Shop information for '{shopName}' not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        continue;
+                    }
+
+                    tasks.Add(ShopProcess(shopInfo));
                 }
 
-                tasks.Add(ShopProcess(shopInfo));
+                await Task.WhenAll(tasks);
             }
-
-            await Task.WhenAll(tasks);
-        }
 
         private async Task ShopProcess(CombineShop shopInfo)
         {
