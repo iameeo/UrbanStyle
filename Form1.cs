@@ -104,7 +104,7 @@ namespace urban_style_auto_regist
                 {
                     string productPrice = Regex.Replace(element.FindElement(By.XPath("//*[@id='span_product_price_text']")).Text, @"\D", "");
                     string productThumbImg = element.FindElement(By.XPath("//*[@id=\"df-product-detail\"]/div/div[1]/div/div/div[1]/span/img")).GetAttribute("src");
-
+                    string productNewTitle = element.FindElement(By.CssSelector("tr.prd_model_css.xans-record- > td > span:nth-child(1)")).Text;
                     // JavaScript 변수 가져오기
                     string script = "return option_stock_data;";  // JavaScript 변수 호출
                     string jsonData = (string)((IJavaScriptExecutor)parseWait.Until(driver => driver)).ExecuteScript(script);
@@ -164,6 +164,7 @@ namespace urban_style_auto_regist
                     var combineProduct = new CombineProduct
                     {
                         ProductTitle = productCode,
+                        ProductNewTitle = productNewTitle,
                         ProductCode = productCode,
                         ProductSize = string.Join(",", sizes),
                         ProductColor = string.Join(",", colors),
@@ -238,7 +239,7 @@ namespace urban_style_auto_regist
 
                 foreach (var product in productLists)
                 {
-                    string productUrl = product.FindElement(By.TagName("a")).GetAttribute("href") + "#detail";
+                    string productUrl = product.FindElement(By.TagName("a")).GetAttribute("href");
                     parseDriver.Navigate().GoToUrl(productUrl);
                     var parseWait = new WebDriverWait(parseDriver, TimeSpan.FromSeconds(10));
 
@@ -264,6 +265,10 @@ namespace urban_style_auto_regist
                 var metaTag = element.FindElement(By.XPath("//meta[@property='og:title']"));
                 var content = metaTag.GetAttribute("content").Split("_");
                 string productCode = content[0];
+                if (productCode.Contains('('))
+                {
+                    productCode = productCode.Split("(")[0].Trim();
+                }
 
                 if (!_context.CombineProducts.Where(x => x.ProductCode == productCode).Any())
                 {
@@ -322,8 +327,8 @@ namespace urban_style_auto_regist
                         Debug.WriteLine($"JSON 파싱 중 오류 발생: {jsonEx.Message}");
                     }
 
-                    var imgs = element.FindElements(By.XPath("//*[@id=\"prdDetail\"]/div/*/img"))
-                                      .Select(img => img.GetAttribute("src"))
+                    var imgs = element.FindElements(By.XPath("//*[@id=\"prdDetail\"]//img"))
+                                      .Select(img => img.GetAttribute("ec-data-src"))
                                       .ToList();
 
                     var combineProduct = new CombineProduct
@@ -352,7 +357,9 @@ namespace urban_style_auto_regist
 
                     for (int i = 0; i < imgs.Count; i++)
                     {
-                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgs[i].Contains("http") ? "" : "https:" + imgs[i], $"{seq}_{i}.jpg"));
+                        string imgUrl = "https:"+ imgs[i];
+
+                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
 
                         _context.CombineProductImgs.Add(new CombineProductImg
                         {
@@ -360,7 +367,7 @@ namespace urban_style_auto_regist
                             ProductShop = shopName,
                             ProductSeq = seq,
                             ProductImgSort = i,
-                            ProductImgUrl = imgs[i].Contains("http") ? "" : "https:" + imgs[i],
+                            ProductImgUrl = imgUrl,
                         });
                     }
 
@@ -466,14 +473,21 @@ namespace urban_style_auto_regist
                                 {
                                     // -로 구분하여 사이즈와 색상 정보 추출
                                     var optionParts = optionData.Split('-');
-                                    if (optionParts.Length > 0)
+                                    if (optionData.Contains("-"))
                                     {
-                                        sizes.Add(optionParts[1]);  // 사이즈 추가 (중복 자동 제거)
+                                        if (optionParts.Length > 0)
+                                        {
+                                            sizes.Add(optionParts[1]);  // 사이즈 추가 (중복 자동 제거)
+                                        }
+                                        if (optionParts.Length > 1)
+                                        {
+                                            colors.Add(optionParts[0]);  // 색상 추가 (중복 자동 제거)
+                                        }
                                     }
-                                    if (optionParts.Length > 1)
+                                    else
                                     {
                                         colors.Add(optionParts[0]);  // 색상 추가 (중복 자동 제거)
-                                    }
+                                    }                                    
                                 }
                             }
                         }
