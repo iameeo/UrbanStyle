@@ -381,16 +381,20 @@ namespace urban_style_auto_regist
                     {
                         string imgUrl = !imgs[i].Contains("http") ? "https:" + imgs[i] : imgs[i];
 
-                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
-
-                        _context.CombineProductImgs.Add(new CombineProductImg
+                        if (!imgs[i].Contains("EC9DB4EBAFB8ECA780"))
                         {
-                            ProductRegdate = DateTime.Now,
-                            ProductShop = shopName,
-                            ProductSeq = seq,
-                            ProductImgSort = i,
-                            ProductImgUrl = imgUrl,
-                        });
+                            imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
+
+                            _context.CombineProductImgs.Add(new CombineProductImg
+                            {
+                                ProductRegdate = DateTime.Now,
+                                ProductShop = shopName,
+                                ProductSeq = seq,
+                                ProductImgSort = i,
+                                ProductImgUrl = imgUrl,
+                            });
+
+                        }
                     }
 
                     await _context.SaveChangesAsync();  // 비동기 저장
@@ -683,16 +687,19 @@ namespace urban_style_auto_regist
                     {
                         string imgUrl = GetDomainWithProtocol(parseWait, imgs[i]);
 
-                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
-
-                        _context.CombineProductImgs.Add(new CombineProductImg
+                        if(imgs[i] != "")
                         {
-                            ProductRegdate = DateTime.Now,
-                            ProductShop = shopName,
-                            ProductSeq = seq,
-                            ProductImgSort = i,
-                            ProductImgUrl = imgUrl,
-                        });
+                            imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
+
+                            _context.CombineProductImgs.Add(new CombineProductImg
+                            {
+                                ProductRegdate = DateTime.Now,
+                                ProductShop = shopName,
+                                ProductSeq = seq,
+                                ProductImgSort = i,
+                                ProductImgUrl = imgUrl,
+                            });
+                        }
                     }
 
                     await _context.SaveChangesAsync();  // 비동기 저장
