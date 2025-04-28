@@ -12,6 +12,8 @@ namespace urban_style_auto_regist
 
         public DbSet<CombineProductImg> CombineProductImgs { get; set; }
 
+        public DbSet<ErrorLog> ErrorLogs { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             const string connectionString = "server=localhost;database=iameeo_db;user=iameeo;password=wndnjsWkd!2;";

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using urban_style_auto_regist.Model;
 
 namespace urban_style_auto_regist.Common
 {
@@ -55,7 +56,7 @@ namespace urban_style_auto_regist.Common
         /// <summary>
         /// 이미지를 다운로드하여 지정된 디렉터리에 저장합니다.
         /// </summary>
-        public static async Task<bool> ImgDownloadAsync(string shopName, string type, string imgUrl, string fileName)
+        public static async Task<bool> ImgDownloadAsync(string shopName, string type, string imgUrl, string fileName, AppDbContext _context)
         {
             if (string.IsNullOrWhiteSpace(shopName) || string.IsNullOrWhiteSpace(type) ||
                 string.IsNullOrWhiteSpace(imgUrl) || string.IsNullOrWhiteSpace(fileName))
@@ -85,6 +86,16 @@ namespace urban_style_auto_regist.Common
             catch (Exception ex)
             {
                 Debug.WriteLine($"이미지 다운로드 실패: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = shopName,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
                 return false; // 실패
             }
         }

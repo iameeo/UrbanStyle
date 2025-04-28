@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using OpenQA.Selenium;
+using OpenQA.Selenium.BiDi.Modules.Input;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using SeleniumExtras.WaitHelpers;
@@ -8,6 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using urban_style_auto_regist.Common;
 using urban_style_auto_regist.Model;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 using Timer = System.Windows.Forms.Timer;
 
 namespace urban_style_auto_regist
@@ -35,13 +37,23 @@ namespace urban_style_auto_regist
         private void InitializeTimer()
         {
             timer = new Timer();
-            timer.Interval = 30 * 60 * 1000; // 30분 (밀리초 단위)
+            SetInitialInterval();
             timer.Tick += Timer_Tick;
             timer.Start();
         }
 
+        private void SetInitialInterval()
+        {
+            DateTime now = DateTime.Now;
+            DateTime nextHour = now.AddHours(1).Date.AddHours(now.Hour + 1); // 다음 정각 시간 계산
+            double initialInterval = (nextHour - now).TotalMilliseconds; // 현재 시간부터 다음 정각까지의 밀리초 계산
+            timer.Interval = (int)initialInterval; // 타이머 간격 설정
+        }
+
         private void Timer_Tick(object sender, EventArgs e)
         {
+            timer.Interval = 60 * 60 * 1000; // 이후에는 매 1시간마다 실행
+
             // 버튼 클릭 이벤트 트리거
             BtnAll.PerformClick();
         }
@@ -103,6 +115,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"오류 발생: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = shopName,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
             finally
             {
@@ -202,12 +224,12 @@ namespace urban_style_auto_regist
                     // 비동기 이미지 다운로드
                     var imageDownloadTasks = new List<Task<bool>>
                 {
-                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg")
+                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg", _context)
                 };
 
                     for (int i = 0; i < imgs.Count; i++)
                     {
-                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgs[i], $"{seq}_{i}.jpg"));
+                        //imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgs[i], $"{seq}_{i}.jpg"));
 
                         _context.CombineProductImgs.Add(new CombineProductImg
                         {
@@ -228,6 +250,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = productUrl,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
         }
 
@@ -269,6 +301,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"오류 발생: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = shopName,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
             finally
             {
@@ -297,54 +339,65 @@ namespace urban_style_auto_regist
 
                     // JavaScript 변수 가져오기
                     string script = "return option_stock_data;";  // JavaScript 변수 호출
-                    string jsonData = (string)((IJavaScriptExecutor)parseWait.Until(driver => driver)).ExecuteScript(script);
-
-                    // 작은따옴표 -> 큰따옴표 변환
-                    jsonData = jsonData.Replace("'", "\"");
-
-                    // 이스케이프 문제 해결
-                    jsonData = Regex.Unescape(jsonData);
+                    string jsonData = string.Empty;
+                    try
+                    {
+                        jsonData = (string)((IJavaScriptExecutor)parseWait.Until(driver => driver)).ExecuteScript(script);
+                    }
+                    catch {
+                        jsonData = "";
+                    }
+                    //string jsonData = (string)((IJavaScriptExecutor)parseWait.Until(driver => driver)).ExecuteScript(script);
 
                     // JSON 파싱
                     var sizes = new HashSet<string>();  // 중복을 방지할 HashSet 사용
                     var colors = new HashSet<string>();  // 중복을 방지할 HashSet 사용
 
-                    try
+                    if (jsonData != "")
                     {
-                        var jsonDoc = JsonDocument.Parse(jsonData);
-                        Debug.WriteLine("JSON 파싱 성공!");
+                        // 작은따옴표 -> 큰따옴표 변환
+                        jsonData = jsonData.Replace("'", "\"");
 
-                        foreach (var json in jsonDoc.RootElement.EnumerateObject())
+                        // 이스케이프 문제 해결
+                        jsonData = Regex.Unescape(jsonData);
+
+                        try
                         {
-                            var jsonParser = json.Value;
+                            var jsonDoc = JsonDocument.Parse(jsonData);
+                            Debug.WriteLine("JSON 파싱 성공!");
 
-                            // "option_value" 속성 파싱
-                            if (jsonParser.TryGetProperty("option_value", out var optionValue))
+                            foreach (var json in jsonDoc.RootElement.EnumerateObject())
                             {
-                                string optionData = optionValue.GetString();
-                                if (!string.IsNullOrEmpty(optionData))
+                                var jsonParser = json.Value;
+
+                                // "option_value" 속성 파싱
+                                if (jsonParser.TryGetProperty("option_value", out var optionValue))
                                 {
-                                    // -로 구분하여 사이즈와 색상 정보 추출
-                                    var optionParts = optionData.Split('-');
-                                    if (optionParts.Length > 0)
+                                    string optionData = optionValue.GetString();
+                                    if (!string.IsNullOrEmpty(optionData))
                                     {
-                                        sizes.Add(optionParts[1]);  // 사이즈 추가 (중복 자동 제거)
-                                    }
-                                    if (optionParts.Length > 1)
-                                    {
-                                        colors.Add(optionParts[0]);  // 색상 추가 (중복 자동 제거)
+                                        // -로 구분하여 사이즈와 색상 정보 추출
+                                        var optionParts = optionData.Split('-');
+                                        if (optionParts.Length > 0)
+                                        {
+                                            sizes.Add(optionParts[1]);  // 사이즈 추가 (중복 자동 제거)
+                                        }
+                                        if (optionParts.Length > 1)
+                                        {
+                                            colors.Add(optionParts[0]);  // 색상 추가 (중복 자동 제거)
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        // HashSet의 값들을 문자열로 변환하여 출력
-                        Debug.WriteLine($"Sizes: {string.Join(",", sizes)}");
-                        Debug.WriteLine($"Colors: {string.Join(",", colors)}");
-                    }
-                    catch (JsonException jsonEx)
-                    {
-                        Debug.WriteLine($"JSON 파싱 중 오류 발생: {jsonEx.Message}");
+                            // HashSet의 값들을 문자열로 변환하여 출력
+                            Debug.WriteLine($"Sizes: {string.Join(",", sizes)}");
+                            Debug.WriteLine($"Colors: {string.Join(",", colors)}");
+                        }
+                        catch (JsonException jsonEx)
+                        {
+                            Debug.WriteLine($"JSON 파싱 중 오류 발생: {jsonEx.Message}");
+                        }
                     }
 
                     var imgs = element.FindElements(By.XPath("//*[@id=\"prdDetail\"]//img"))
@@ -374,7 +427,7 @@ namespace urban_style_auto_regist
                     // 비동기 이미지 다운로드
                     var imageDownloadTasks = new List<Task<bool>>
                 {
-                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg")
+                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg", _context)
                 };
 
                     for (int i = 0; i < imgs.Count; i++)
@@ -383,7 +436,7 @@ namespace urban_style_auto_regist
 
                         if (!imgs[i].Contains("EC9DB4EBAFB8ECA780"))
                         {
-                            imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
+                            //imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
 
                             _context.CombineProductImgs.Add(new CombineProductImg
                             {
@@ -406,6 +459,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = productUrl,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
         }
 
@@ -447,6 +510,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"오류 발생: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = shopName,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
             finally
             {
@@ -514,7 +587,7 @@ namespace urban_style_auto_regist
                                     else
                                     {
                                         colors.Add(optionParts[0]);  // 색상 추가 (중복 자동 제거)
-                                    }                                    
+                                    }
                                 }
                             }
                         }
@@ -528,7 +601,7 @@ namespace urban_style_auto_regist
                         Debug.WriteLine($"JSON 파싱 중 오류 발생: {jsonEx.Message}");
                     }
 
-                    var imgs = element.FindElements(By.XPath("//*[@id=\"prdDetail\"]/div[3]/div[2]/*/img"))
+                    var imgs = element.FindElements(By.XPath("//*[@id=\"prdDetail\"]/div[3]/div[2]//img"))
                                       .Select(img => img.GetAttribute("src"))
                                       .ToList();
 
@@ -553,12 +626,12 @@ namespace urban_style_auto_regist
                     // 비동기 이미지 다운로드
                     var imageDownloadTasks = new List<Task<bool>>
                 {
-                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg")
+                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg", _context)
                 };
 
                     for (int i = 0; i < imgs.Count; i++)
                     {
-                        imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgs[i], $"{seq}_{i}.jpg"));
+                        //imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgs[i], $"{seq}_{i}.jpg"));
 
                         _context.CombineProductImgs.Add(new CombineProductImg
                         {
@@ -579,6 +652,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = productUrl,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
         }
 
@@ -624,6 +707,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"오류 발생: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = shopName,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
             finally
             {
@@ -680,16 +773,16 @@ namespace urban_style_auto_regist
                     // 비동기 이미지 다운로드
                     var imageDownloadTasks = new List<Task<bool>>
                 {
-                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg")
+                    Util.ImgDownloadAsync(shopName, "title", productThumbImg, $"{seq}.jpg", _context)
                 };
 
                     for (int i = 0; i < imgs.Count; i++)
                     {
                         string imgUrl = GetDomainWithProtocol(parseWait, imgs[i]);
 
-                        if(imgs[i] != "")
+                        if (imgs[i] != "")
                         {
-                            imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
+                            //imageDownloadTasks.Add(Util.ImgDownloadAsync(shopName, "desc", imgUrl, $"{seq}_{i}.jpg"));
 
                             _context.CombineProductImgs.Add(new CombineProductImg
                             {
@@ -711,6 +804,16 @@ namespace urban_style_auto_regist
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error: {ex.Message}");
+
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    ErrorDate = DateTime.Now,
+                    Url = productUrl,
+                    Message = ex.Message,
+                    StackTrace = ex.StackTrace
+                });
+
+                await _context.SaveChangesAsync(); // 비동기 저장
             }
         }
 
@@ -768,6 +871,11 @@ namespace urban_style_auto_regist
             {
                 MessageBox.Show($"Error logging into {shopInfo.ShopName}: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void BtmImgStart_Click(object sender, EventArgs e)
+        {
+            //SELECT* FROM combine_product t1 left JOIN combine_product_img t2 ON t1.seq = t2.product_seq WHERE t2.seq IS null
         }
     }
 }
